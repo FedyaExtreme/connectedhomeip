@@ -161,6 +161,7 @@ protected:
     chip::PersistentStorageOperationalKeystore mOperationalKeystore;
     chip::Credentials::PersistentStorageOpCertStore mOpCertStore;
     static chip::Crypto::RawKeySessionKeystore sSessionKeystore;
+    chip::Crypto::P256Keypair ephemeralKey;
 
     static chip::Credentials::GroupDataProviderImpl sGroupDataProvider;
     static chip::app::DefaultICDClientStorage sICDClientStorage;
@@ -245,6 +246,8 @@ private:
 
     CHIP_ERROR StartWaiting(chip::System::Clock::Timeout seconds);
     void StopWaiting();
+
+    CHIP_ERROR LoadKeypairFromRaw(chip::ByteSpan privateKey, chip::ByteSpan publicKey, chip::Crypto::P256Keypair & keypair);
 
 #if CONFIG_USE_SEPARATE_EVENTLOOP
     std::condition_variable cvWaitingForResponse;

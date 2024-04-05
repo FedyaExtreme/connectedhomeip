@@ -859,6 +859,16 @@ FabricTable::AddOrUpdateInner(FabricIndex fabricIndex, bool isAddition, Crypto::
                                                       newFabricInfo.compressedFabricId, newFabricInfo.fabricId,
                                                       newFabricInfo.nodeId, nocPubKey, newFabricInfo.rootPublicKey));
     }
+    uint8_t * arr_ptr = nocPubKey.Bytes();
+    ChipLogProgress(FabricProvisioning, "NOC pubkey size: %ld", nocPubKey.Length());
+    for (size_t i = 0; i < nocPubKey.Length(); i++)
+    {
+        // ChipLogProgress(FabricProvisioning, "NOC pubkey: 0x%02x", *arr_ptr++);
+        printf(" %02x ", *arr_ptr++);
+    }
+
+    // ChipLogProgress(FabricProvisioning, "NOC pubkey: %s", (char *) nocPubKey.Bytes());
+    // ChipLogProgress(FabricProvisioning, "Operational pubkey: %s", reinterpret_cast<char *>(existingOpKey->Pubkey().Bytes()));
 
     if (existingOpKey != nullptr)
     {

@@ -32,9 +32,8 @@ public:
 
     static ByteSpan GetDefaultIpk()
     {
-        static const uint8_t mDefaultIpk[Crypto::CHIP_CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES] = {
-            't', 'e', 'm', 'p', 'o', 'r', 'a', 'r', 'y', ' ', 'i', 'p', 'k', ' ', '0', '1'
-        };
+        static const uint8_t mDefaultIpk[Crypto::CHIP_CRYPTO_SYMMETRIC_KEY_LENGTH_BYTES] = { 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                                             0, 0, 0, 0, 0, 0, 0, 0 };
         return ByteSpan(mDefaultIpk);
     }
 };

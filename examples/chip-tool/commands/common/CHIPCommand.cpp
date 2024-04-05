@@ -24,6 +24,7 @@
 #include <lib/core/CHIPVendorIdentifiers.hpp>
 #include <lib/support/CodeUtils.h>
 #include <lib/support/ScopedBuffer.h>
+#include <lib/support/Span.h>
 #include <lib/support/TestGroupData.h>
 #include <platform/LockTracker.h>
 
@@ -44,6 +45,27 @@ constexpr chip::FabricId kIdentityGammaFabricId = 3;
 constexpr chip::FabricId kIdentityOtherFabricId = 4;
 constexpr char kPAATrustStorePathVariable[]     = "CHIPTOOL_PAA_TRUST_STORE_PATH";
 constexpr char kCDTrustStorePathVariable[]      = "CHIPTOOL_CD_TRUST_STORE_PATH";
+
+// std::string privOpKey = "BO0QDnh9bQskqCrKsx0CYb8+dZmskM2BxQg8U3ENN+"
+//                         "CiycaCV1pzeTQrwL6KUTpdJ89853hG1MiZnWes6ijhKV177cjxkd4Kqoo40WivySIRq6le/Xz2aLN5u92cMUB/6Q==";
+// std::string pubOpKey  = "BO0QDnh9bQskqCrKsx0CYb8+dZmskM2BxQg8U3ENN+CiycaCV1pzeTQrwL6KUTpdJ89853hG1MiZnWes6ijhKV0=";
+
+// extracted manually from private key
+// uint8_t privKeyBuf[] = { 0xef, 0xb7, 0x23, 0xc6, 0x47, 0x78, 0x2a, 0xaa, 0x28, 0xe3, 0x45, 0xa2, 0xbf, 0x24, 0x88, 0x46,
+//                          0xae, 0xa5, 0x7b, 0xf5, 0xf3, 0xd9, 0xa2, 0xcd, 0xe6, 0xef, 0x76, 0x70, 0xc5, 0x01, 0xff, 0xa4 };
+
+// // uint8_t privKeyBuf[] = { 0x38, 0x6c, 0xfb, 0x26, 0xe3, 0x4e, 0x66, 0xa9, 0x9f, 0x6b, 0xae, 0xb5, 0x66, 0xe3, 0x4a, 0x0f,
+// //                          0x9e, 0xe8, 0x19, 0xb6, 0x8c, 0x11, 0x32, 0xd4, 0xe0, 0x6a, 0xc9, 0x4c, 0xfb, 0x81, 0xaf, 0xd0 };
+// // pubkey from other controller
+// uint8_t pubKeyBuf[] = { 0x04, 0xed, 0x10, 0x0e, 0x78, 0x7d, 0x6d, 0x0b, 0x24, 0xa8, 0x2a, 0xca, 0xb3, 0x1d, 0x02, 0x61, 0xbf,
+//                         0x3e, 0x75, 0x99, 0xac, 0x90, 0xcd, 0x81, 0xc5, 0x08, 0x3c, 0x53, 0x71, 0x0d, 0x37, 0xe0, 0xa2, 0xc9,
+//                         0xc6, 0x82, 0x57, 0x5a, 0x73, 0x79, 0x34, 0x2b, 0xc0, 0xbe, 0x8a, 0x51, 0x3a, 0x5d, 0x27, 0xcf, 0x7c,
+//                         0xe7, 0x78, 0x46, 0xd4, 0xc8, 0x99, 0x9d, 0x67, 0xac, 0xea, 0x28, 0xe1, 0x29, 0x5d };
+
+// uint8_t pubKeyBuf[] = { 0x04, 0x62, 0xf1, 0x40, 0xab, 0xda, 0x72, 0xe7, 0x37, 0xf7, 0xe3, 0xa6, 0x5a, 0x17, 0x01, 0xb0, 0x45,
+//                         0xfa, 0xf5, 0x7a, 0x47, 0xe5, 0x00, 0x85, 0x21, 0x49, 0x80, 0x8a, 0x11, 0x00, 0x53, 0xc4, 0x13, 0x69,
+//                         0x2b, 0x9e, 0xd7, 0x2d, 0x8a, 0x1f, 0x3d, 0xb8, 0x57, 0xbc, 0x3f, 0xee, 0xf6, 0xdd, 0x5d, 0xc3, 0xaf,
+//                         0x8b, 0x3a, 0x28, 0x3f, 0x05, 0x6f, 0xbe, 0x43, 0x79, 0xbf, 0x48, 0x8b, 0x93, 0x9e };
 
 const chip::Credentials::AttestationTrustStore * CHIPCommand::sTrustStore = nullptr;
 chip::Credentials::GroupDataProviderImpl CHIPCommand::sGroupDataProvider{ kMaxGroupsPerFabric, kMaxGroupKeysPerFabric };
@@ -86,6 +108,15 @@ CHIP_ERROR GetAttestationTrustStore(const char * paaTrustStorePath, const chip::
 }
 
 } // namespace
+
+CHIP_ERROR CHIPCommand::LoadKeypairFromRaw(chip::ByteSpan privateKey, chip::ByteSpan publicKey, chip::Crypto::P256Keypair & keypair)
+{
+    chip::Crypto::P256SerializedKeypair serializedKeypair;
+    ReturnErrorOnFailure(serializedKeypair.SetLength(privateKey.size() + publicKey.size()));
+    memcpy(serializedKeypair.Bytes(), publicKey.data(), publicKey.size());
+    memcpy(serializedKeypair.Bytes() + publicKey.size(), privateKey.data(), privateKey.size());
+    return keypair.Deserialize(serializedKeypair);
+}
 
 CHIP_ERROR CHIPCommand::MaybeSetUpStack()
 {
@@ -447,8 +478,6 @@ CHIP_ERROR CHIPCommand::InitializeCommissioner(CommissionerIdentity & identity, 
 
     ReturnLogErrorOnFailure(mCredIssuerCmds->SetupDeviceAttestation(commissionerParams, sTrustStore));
 
-    chip::Crypto::P256Keypair ephemeralKey;
-
     if (fabricId != chip::kUndefinedFabricId)
     {
 
@@ -467,23 +496,59 @@ CHIP_ERROR CHIPCommand::InitializeCommissioner(CommissionerIdentity & identity, 
         chip::MutableByteSpan nocSpan(identity.mNOC);
         chip::MutableByteSpan icacSpan(identity.mICAC);
         chip::MutableByteSpan rcacSpan(identity.mRCAC);
+        // chip::MutableByteSpan defaultIpk;
+        // ReturnErrorCodeIf(privKeySpan.size() < privOpKey.len(), CHIP_ERROR_BUFFER_TOO_SMALL);
+        // memcpy(privKeySpan.data(), reinterpret_cast<char *>(privOpKey), sizeof(privOpKey));
+        // std::copy(privOpKey.begin(), privOpKey.end(), std::begin(privKeyBuf));
+        // chip::ByteSpan privKeySpan(privKeyBuf);
+        // privKeySpan.reduce_size(privOpKey.length());
 
-        ReturnLogErrorOnFailure(ephemeralKey.Initialize(chip::Crypto::ECPKeyTarget::ECDSA));
+        // ReturnErrorCodeIf(pubKeySpan.size() < pubOpKey.len(), CHIP_ERROR_BUFFER_TOO_SMALL);
+        // memcpy(pubKeySpan.data(), reinterpret_cast<char *>(pubOpKey), sizeof(pubOpKey));
+        // std::copy(pubOpKey.begin(), pubOpKey.end(), std::begin(pubKeyBuf));
+        // chip::ByteSpan pubKeySpan(pubKeyBuf);
+        // pubKeySpan.reduce_size(pubOpKey.length());
+
+        // ReturnLogErrorOnFailure(ephemeralKey.Initialize(chip::Crypto::ECPKeyTarget::ECDSA));
+        // ReturnErrorOnFailure(ConvertX509CertToChipCert(params.controllerRCAC, rcacSpan));
+        // ReturnErrorOnFailure(Credentials::ExtractPublicKeyFromChipCert(rcacSpan, rootPublicKeySpan));
+        // Crypto::P256PublicKey rootPublicKey{ rootPublicKeySpan };
+
+        // CHIP_ERROR err = LoadKeypairFromRaw(privKeySpan, pubKeySpan, ephemeralKey);
+
+        CHIP_ERROR err = mCredIssuerCmds->GetCurrentIssuerKeypair(ephemeralKey);
 
         ReturnLogErrorOnFailure(mCredIssuerCmds->GenerateControllerNOCChain(identity.mLocalNodeId, fabricId,
                                                                             mCommissionerStorage.GetCommissionerCATs(),
                                                                             ephemeralKey, rcacSpan, icacSpan, nocSpan));
 
         identity.mRCACLen = rcacSpan.size();
-        identity.mICACLen = icacSpan.size();
+        identity.mICACLen = 0;
         identity.mNOCLen  = nocSpan.size();
+        ChipLogError(chipTool, "Size RCAC identity: %ld", rcacSpan.size());
+        ChipLogError(chipTool, "Size ICAC identity: %ld", icacSpan.size());
+        ChipLogError(chipTool, "Size NOC identity: %ld", nocSpan.size());
+        // ChipLogError(chipTool, "Size pubkey identity: %ld", pubKeySpan.size());
+        // ChipLogError(chipTool, "Size privkey identity: %ld", privKeySpan.size());
+        ChipLogError(chipTool, "Keypair convert err 0x%02x", err.AsInteger());
+        ChipLogError(chipTool, "Local node id 0x%02lx", identity.mLocalNodeId);
 
-        commissionerParams.operationalKeypair           = &ephemeralKey;
-        commissionerParams.controllerRCAC               = rcacSpan;
-        commissionerParams.controllerICAC               = icacSpan;
-        commissionerParams.controllerNOC                = nocSpan;
-        commissionerParams.permitMultiControllerFabrics = true;
-        commissionerParams.enableServerInteractions     = NeedsOperationalAdvertising();
+        // uint8_t * arr_ptr = nocPubKey.Bytes();
+        // ChipLogProgress(FabricProvisioning, "NOC pubkey size: %ld", nocPubKey.Length());
+        // for (size_t i = 0; i < nocPubKey.Length(); i++)
+        // {
+        //     // ChipLogProgress(FabricProvisioning, "NOC pubkey: 0x%02x", *arr_ptr++);
+        //     printf(" %02x ", *arr_ptr++);
+        // }
+        // ChipLogError(chipTool, "Public Key keypair: %s", ephemeralKey.Pubkey().Bytes());
+
+        commissionerParams.operationalKeypair = &ephemeralKey;
+        commissionerParams.controllerRCAC     = rcacSpan;
+        // commissionerParams.controllerICAC                       = icacSpan;
+        commissionerParams.controllerNOC                        = nocSpan;
+        commissionerParams.permitMultiControllerFabrics         = true;
+        commissionerParams.hasExternallyOwnedOperationalKeypair = true;
+        commissionerParams.enableServerInteractions             = NeedsOperationalAdvertising();
     }
 
     // TODO: Initialize IPK epoch key in ExampleOperationalCredentials issuer rather than relying on DefaultIpkValue

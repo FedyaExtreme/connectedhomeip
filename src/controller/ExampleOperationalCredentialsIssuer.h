@@ -90,6 +90,16 @@ public:
 
     void SetCertificateValidityPeriod(uint32_t validity) { mValidity = validity; }
 
+    CHIP_ERROR GetCurrentIssuer(Crypto::P256Keypair & keypair)
+    {
+
+        chip::Crypto::P256SerializedKeypair serializedKeypair;
+        // ReturnErrorOnFailure(mIssuer.Initialize(Crypto::ECPKeyTarget::ECDSA));
+        ReturnErrorOnFailure(serializedKeypair.SetLength(97));
+        ReturnErrorOnFailure(mIssuer.Serialize(serializedKeypair));
+        return keypair.Deserialize(serializedKeypair);
+    }
+
     /**
      * Generate a random operational node id.
      *

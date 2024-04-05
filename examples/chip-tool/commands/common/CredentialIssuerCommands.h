@@ -75,6 +75,8 @@ public:
 
     virtual void SetCredentialIssuerCATValues(chip::CATValues cats) = 0;
 
+    virtual CHIP_ERROR GetCurrentIssuerKeypair(chip::Crypto::P256Keypair & keypair) = 0;
+
     /**
      * @brief
      *   This function is used to Generate NOC Chain for the Controller/Commissioner. Parameters follow the example implementation,

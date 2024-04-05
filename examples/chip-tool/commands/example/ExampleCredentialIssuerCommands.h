@@ -25,7 +25,7 @@
 #include <credentials/attestation_verifier/DefaultDeviceAttestationVerifier.h>
 #include <credentials/attestation_verifier/DeviceAttestationVerifier.h>
 #include <credentials/examples/DeviceAttestationCredsExample.h>
-
+#include <crypto/CHIPCryptoPAL.h>
 class ExampleCredentialIssuerCommands : public CredentialIssuerCommands
 {
 public:
@@ -98,6 +98,11 @@ public:
         default:
             return false;
         }
+    }
+
+    CHIP_ERROR GetCurrentIssuerKeypair(chip::Crypto::P256Keypair & keypair) override
+    {
+        return mOpCredsIssuer.GetCurrentIssuer(keypair);
     }
 
 protected:
